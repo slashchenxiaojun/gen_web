@@ -25,7 +25,7 @@ public class KWeb {
     location.pathname = request.getRequestURI();
     location.port = request.getServerPort() == 80 ? "" : request.getServerPort() + "";
     location.host = location.hostname + (location.port.equals("") ? "" : ":" + location.port);
-    location.origin = location.protocol + "://" + location.host;
+    location.origin = location.protocol + "://" + location.host + request.getServletContext().getContextPath();
     location.href = location.origin + location.pathname + location.search + location.hash;
     return location;
   }
