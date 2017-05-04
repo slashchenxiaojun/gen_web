@@ -21,17 +21,17 @@ import com.jfinal.kit.StrKit;
 import com.jfinal.plugin.activerecord.Record;
 
 public class KExcel {
-	// 定制日期格式
-	private static String DATE_FORMAT = "yyyy-mm-dd h:mm"; // "m/d/yy h:mm"
+  // 定制日期格式
+  private static String DATE_FORMAT = "yyyy-mm-dd h:mm"; // "m/d/yy h:mm"
 
-	// 定制浮点数格式
-	private static String NUMBER_FORMAT = "#,##0.00";
-	
-	@Deprecated
-	public static void read(File file, String[] argumentNames, String[] argumentTypes, int headerNum, int sheetIndex) {
-	  Assert.checkNotNull(file, "file");
-	  String filename = file.getName();
-	  try {
+  // 定制浮点数格式
+  private static String NUMBER_FORMAT = "#,##0.00";
+  
+  @Deprecated
+  public static void read(File file, String[] argumentNames, String[] argumentTypes, int headerNum, int sheetIndex) {
+    Assert.checkNotNull(file, "file");
+    String filename = file.getName();
+    try {
       FileInputStream fileIn = new FileInputStream(file);
       Workbook wb = null;
       Sheet sheet = null;
@@ -61,109 +61,122 @@ public class KExcel {
     } catch (IOException e) {
       e.printStackTrace();
     }
-	}
-	 
-	public static void read(String filename) {
-	  Assert.checkNotNull(filename, "file name");
+  }
+   
+  public static void read(String filename) {
+    Assert.checkNotNull(filename, "file name");
 
-	}
-	
-	@SuppressWarnings("resource")
-	/**
-	 * 导出Excel
-	 * 
-	 * @param filename
-	 * @param list 实际数据
-	 * @param argumentNames 参数名称
-	 * @param argumentTypes 参数类型
-	 * @param title 标题
-	 * @param customDateFormat 自定义的日期格式 key: argumentName, value: format
-	 */
-	public static void writer(String filename, List<Record> list, String[] argumentNames, String[] argumentTypes, String[] title, Map<String, String> customDateFormat) {
-		FileOutputStream fileOut = null;
-		try {
-			if(
-					list == null || StrKit.isBlank(filename) || 
-					title == null || title.length == 0 ||
-					argumentNames == null || argumentNames.length == 0 ||
-					argumentTypes == null || argumentTypes.length == 0 ||
-					argumentTypes.length != argumentNames.length ||
-					argumentNames.length != title.length
-			) throw new IllegalArgumentException();
-			// create a new workbook
-			Workbook wb = new HSSFWorkbook();
-			wb.createCellStyle().setDataFormat(HSSFDataFormat.getBuiltinFormat("m/d/yy h:mm"));    
-			// create a new sheet
-			Sheet s = wb.createSheet();
-			// declare a row object reference
-			Row r = null;
-			// declare a cell object reference
-			Cell c = null;
-			// create title
-			r = s.createRow(0);
-			for(int i = 0; i < title.length; i++) {
-				c = r.createCell(i);
-				c.setCellValue(title[i]);
-			}
-			for(int i = 0; i < list.size(); i++) {
-				Record o = list.get(i);
-				r = s.createRow(i + 1);
-				for(int j = 0; j < title.length; j++) {
-					c = r.createCell(j);
-					if(argumentTypes[j].contains("String"))
-						c.setCellValue(o.getStr(argumentNames[j]));
-					else if(argumentTypes[j].contains("Date") || argumentTypes[j].contains("Timestamp")) {
-						 CellStyle cellStyle = wb.createCellStyle();
-						 String format = "";
-						 if(customDateFormat != null) {
-							 format = customDateFormat.get(argumentNames[j]);
-							 if(StrKit.isBlank(format)) {
-								 format = DATE_FORMAT;
-							 }
-						 }
-						 cellStyle.setDataFormat(wb.createDataFormat().getFormat(format));
-						 c.setCellStyle(cellStyle);
-						 c.setCellValue(o.getDate(argumentNames[j]));
-					} else if(argumentTypes[j].contains("BigDecimal")) {
-						c.setCellType(Cell.CELL_TYPE_NUMERIC);
-						CellStyle cellStyle = wb.createCellStyle(); // 建立新的cell样式  
-						DataFormat format = wb.createDataFormat();
-						cellStyle.setDataFormat(format.getFormat(NUMBER_FORMAT)); // 设置cell样式为定制的浮点数格式  
-						c.setCellStyle(cellStyle); // 设置该cell浮点数的显示格式  
-						Object obj = o.get(argumentNames[j], 0);
-            c.setCellValue(Double.parseDouble(obj.toString()));
-					} else if(argumentTypes[j].contains("Integer")) {
-					  c.setCellType(Cell.CELL_TYPE_NUMERIC);
-            CellStyle cellStyle = wb.createCellStyle(); // 建立新的cell样式  
-            DataFormat format = wb.createDataFormat();
-            cellStyle.setDataFormat(format.getFormat("0")); // 设置cell样式为定制Integer
-            c.setCellStyle(cellStyle); // 设置该cell浮点数的显示格式 
+  }
+  
+  @SuppressWarnings("resource")
+  /**
+   * 导出Excel
+   * 
+   * @param filename
+   * @param list 实际数据
+   * @param argumentNames 参数名称
+   * @param argumentTypes 参数类型
+   * @param title 标题
+   * @param customDateFormat 自定义的日期格式 key: argumentName, value: format
+   */
+  public static void writer(String filename, List<Record> list, String[] argumentNames, String[] argumentTypes, String[] title, Map<String, String> customDateFormat) {
+    FileOutputStream fileOut = null;
+    try {
+      if(
+          list == null || StrKit.isBlank(filename) || 
+          title == null || title.length == 0 ||
+          argumentNames == null || argumentNames.length == 0 ||
+          argumentTypes == null || argumentTypes.length == 0 ||
+          argumentTypes.length != argumentNames.length ||
+          argumentNames.length != title.length
+      ) throw new IllegalArgumentException();
+      // create a new workbook
+      Workbook wb = new HSSFWorkbook();
+      wb.createCellStyle().setDataFormat(HSSFDataFormat.getBuiltinFormat("m/d/yy h:mm"));    
+      // create a new sheet
+      Sheet s = wb.createSheet();
+      // declare a row object reference
+      Row r = null;
+      // declare a cell object reference
+      Cell c = null;
+      // create title
+      r = s.createRow(0);
+      // init format 为了避免:
+      // The maximum number of cell styles was exceeded. You can define up to 4000 styles in a .xls workbook
+      // CellStyle不能创建太多次
+      
+      // ----- number style
+      CellStyle numberCellStyle = wb.createCellStyle(); // 建立新的cell样式  
+      DataFormat numberFormat = wb.createDataFormat();
+      numberCellStyle.setDataFormat(numberFormat.getFormat(NUMBER_FORMAT)); // 设置cell样式为定制的浮点数格式  
+      
+      // ----- date style
+      CellStyle dateCellStyle = wb.createCellStyle();
+      String dateFormatStr = "";
+      DataFormat dateFormat = wb.createDataFormat();
+
+      // ----- inter style
+      CellStyle integerCellStyle = wb.createCellStyle(); // 建立新的cell样式  
+      DataFormat integerFormat = wb.createDataFormat();
+      integerCellStyle.setDataFormat(integerFormat.getFormat("0")); // 设置cell样式为定制Integer
+      
+      // -----
+      for(int i = 0; i < title.length; i++) {
+        c = r.createCell(i);
+        c.setCellValue(title[i]);
+      }
+      for(int i = 0; i < list.size(); i++) {
+        Record o = list.get(i);
+        r = s.createRow(i + 1);
+        for(int j = 0; j < title.length; j++) {
+          c = r.createCell(j);
+          if(argumentTypes[j].contains("String"))
+            c.setCellValue(o.getStr(argumentNames[j]));
+          else if(argumentTypes[j].contains("Date") || argumentTypes[j].contains("Timestamp")) {
+            // 使用自定义的dateformat
+            if(customDateFormat != null) {
+              dateFormatStr = customDateFormat.get(argumentNames[j]);
+              if(StrKit.isBlank(dateFormatStr)) {
+                dateFormatStr = DATE_FORMAT;
+              }
+            }
+            dateCellStyle.setDataFormat(dateFormat.getFormat(dateFormatStr));
+            c.setCellStyle(dateCellStyle);
+            c.setCellValue(o.getDate(argumentNames[j]));
+          } else if(argumentTypes[j].contains("BigDecimal")) {
             Object obj = o.get(argumentNames[j], 0);
+            c.setCellType(Cell.CELL_TYPE_NUMERIC);
+            c.setCellStyle(numberCellStyle); // 设置该cell浮点数的显示格式  
             c.setCellValue(Double.parseDouble(obj.toString()));
-					}
-					else if(argumentTypes[j].contains("Boolean"))
-						c.setCellValue(o.getBoolean(argumentNames[j]));
-					else {
-						// 如果没有符合类型，默认使用String
-					  Object obj = o.get(argumentNames[j]);
-						c.setCellValue(obj != null ? obj.toString() : "");
-					}
-				}
-			}
-		    // Write the output to a file
-		    fileOut = new FileOutputStream(filename);
-			wb.write(fileOut);
-			fileOut.flush();
-			fileOut.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}finally{
-			try {
-				if(fileOut != null)
-					fileOut.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
+          } else if(argumentTypes[j].contains("Integer")) {
+            Object obj = o.get(argumentNames[j], 0);
+            c.setCellType(Cell.CELL_TYPE_NUMERIC);
+            c.setCellStyle(integerCellStyle); // 设置该cell浮点数的显示格式 
+            c.setCellValue(Double.parseDouble(obj.toString()));
+          }
+          else if(argumentTypes[j].contains("Boolean"))
+            c.setCellValue(o.getBoolean(argumentNames[j]));
+          else {
+            // 如果没有符合类型，默认使用String
+            Object obj = o.get(argumentNames[j]);
+            c.setCellValue(obj != null ? obj.toString() : "");
+          }
+        }
+      }
+      // Write the output to a file
+      fileOut = new FileOutputStream(filename);
+      wb.write(fileOut);
+      fileOut.flush();
+      fileOut.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }finally{
+      try {
+        if(fileOut != null)
+          fileOut.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
 }
