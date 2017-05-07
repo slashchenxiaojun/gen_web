@@ -396,8 +396,9 @@ public abstract class JPAModel<M extends JPAModel<M>> extends Model<M> {
               }
             } else {
               // 删除原关联关系
+              long count = Db.findFirst("select count(*) from mp_" + masterTableName + "_" + slavesTableName + " where " + masterTableName + "_id = ?", this.get("id")).getLong("count(*)");
               int deleteIndex = Db.update("delete from mp_" + masterTableName + "_" + slavesTableName + " where " + masterTableName + "_id = ?", this.get("id"));
-              if (deleteIndex <= 0 && deleteIndex != Statement.SUCCESS_NO_INFO) 
+              if (deleteIndex != count && deleteIndex != Statement.SUCCESS_NO_INFO) 
                 throw new PersistenceException(String.format("Oop! cascade update-delete obj {} fail. index: %d", deleteIndex));
             }
             // 保存新的关联关系
@@ -467,8 +468,13 @@ public abstract class JPAModel<M extends JPAModel<M>> extends Model<M> {
    * @param slavesTableName
    */
   private void _cascadeInsert0(Model<M> slavesModel, String masterTableName, String slavesTableName) {
-    if (!slavesModel.save())
-      throw new PersistenceException(String.format("Oop! cascade insert obj {%s} fail.", slavesModel.getClass()));
+    if (slavesModel.get("id") == null) {
+      if (!slavesModel.save())
+        throw new PersistenceException(String.format("Oop! cascade insert obj {%s} fail.", slavesModel.getClass()));
+    } else {
+      if (!slavesModel.update())
+        throw new PersistenceException(String.format("Oop! cascade insert obj {%s} fail.", slavesModel.getClass()));
+    }
     int index = Db.update("insert into mp_" + masterTableName + "_" + slavesTableName + " (" + masterTableName + "_id, " + slavesTableName + "_id) value (?, ?)", this.get("id"), slavesModel.get("id"));
     if (index <= 0 && index != Statement.SUCCESS_NO_INFO) 
       throw new PersistenceException(String.format("Oop! cascade insert obj {%s} fail. index: %d", slavesModel.getClass(), index));
